@@ -5,7 +5,6 @@ metadata:
   labels:
     app: payara-maven3-s2i-builder
   name: payara-maven3-s2i-builder
-  namespace: pyr-s2i
 spec:
   output:
     to:

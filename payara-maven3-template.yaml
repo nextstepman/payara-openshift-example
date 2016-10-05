@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: payara-maven3
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: ${APPNAME}
+    name: ${APPNAME}
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${APPNAME}:latest
+    postCommit: {}
+    resources: {}
+    source:
+      git:
+        ref: master
+        uri: ${SOURCE_REPOSITORY_URL}
+      secrets: null
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: payara-maven3-s2i-builder:latest
+          namespace: pyr-s2i
+        incremental: true
+      type: Source
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: ${APPNAME}
+    name: ${APPNAME}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: ${APPNAME}
+    name: ${APPNAME}
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: ${APPNAME}
+    strategy:
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: ${APPNAME}
+          deploymentconfig: ${APPNAME}
+      spec:
+        containers:
+        - image: 172.30.233.231:5000/mvp-poc/${APPNAME}
+          imagePullPolicy: Always
+          name: ${APPNAME}
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPNAME}
+        from:
+          kind: ImageStreamTag
+          name: ${APPNAME}:latest
+      type: ImageChange
+    - type: ConfigChange
+  status: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: ${APPNAME}
+    name: ${APPNAME}
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      deploymentconfig: ${APPNAME}
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+parameters:
+  - name: APPNAME 
+    description: Name of the application
+    value: example 
+    required: true 
+  - name: SOURCE_REPOSITORY_URL 
+    description: The URL of the repository with your application source code 
+    value: https://github.com/openshift/cakephp-ex.git 
+    required: true 
